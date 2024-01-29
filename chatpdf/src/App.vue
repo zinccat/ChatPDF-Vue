@@ -1,26 +1,19 @@
+// App.vue
 <template>
-  <img alt="Vue logo" src="./assets/logo.png">
-  <HelloWorld msg="Welcome to Your Vue.js App"/>
+  <div>
+    <UploadComponent @file-uploaded="handleFileUploaded" />
+    <PdfViewerComponent v-if="pdfData" :pdfSource="pdfData" />
+  </div>
 </template>
 
-<script>
-import HelloWorld from './components/HelloWorld.vue'
+<script setup>
+import { ref } from 'vue'
+import UploadComponent from './components/UploadComponent.vue'
+import PdfViewerComponent from './components/PdfViewerComponent.vue'
 
-export default {
-  name: 'App',
-  components: {
-    HelloWorld
-  }
+const pdfData = ref(null)
+
+const handleFileUploaded = (data) => {
+  pdfData.value = data
 }
 </script>
-
-<style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
-}
-</style>
