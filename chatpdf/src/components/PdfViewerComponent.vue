@@ -1,11 +1,11 @@
 <template>
   <div>
     <input v-model="searchQuery" type="text" placeholder="Enter text to search" />
-    <button @click="searchText">Search Text</button>
+    <button @click="performSearch">Search Text</button>
     <input v-model="highlightQuery" type="text" placeholder="Enter text to highlight" />
-    <button @click="highlightText">Highlight Text</button>
-    <div v-if="pdfSource" ref="pdfViewerRef">
-      <VuePdfEmbed annotation-layer text-layer :source="pdfSource" :key="pdfReloadKey" />
+    <button @click="performHighlight">Highlight Text</button>
+    <div v-if="pdfSource" ref="pdfViewer">
+      <VuePdfEmbed :source="pdfSource" :key="pdfRenderKey" annotation-layer text-layer />
     </div>
   </div>
 </template>
@@ -15,150 +15,104 @@ import VuePdfEmbed from 'vue-pdf-embed'
 import 'vue-pdf-embed/dist/style/index.css'
 import 'vue-pdf-embed/dist/style/annotationLayer.css'
 import 'vue-pdf-embed/dist/style/textLayer.css'
-
 import { GlobalWorkerOptions } from 'vue-pdf-embed/dist/index.essential.mjs'
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.js?url'
+// eslint-disable-next-line no-unused-vars
+import { onMounted, ref } from 'vue'
+import axios from 'axios'
 
+// PDF.js worker setup
 GlobalWorkerOptions.workerSrc = PdfWorker
 
-import { onMounted, ref } from 'vue';
+const pdfViewer = ref(null)
+const searchQuery = ref("")
+const highlightQuery = ref("")
+const pdfRenderKey = ref(0)
+const textMappings = ref([])
 
-const pdfViewerRef = ref(null);
-const searchQuery = ref("");
-const highlightQuery = ref("");
-const pdfReloadKey = ref(0);
-const rowMappings = ref([]);
-
-const axios = require('axios');
-
-function searchText() {
-  if (!searchQuery.value) return; // Don't search if query is empty
-  // pdfReloadKey.value++; // Increment key to force re-render of VuePdfEmbed
-  // Concatenate text from all text layers
-  const textLayers = pdfViewerRef.value.querySelectorAll('.textLayer');
-  const { concatenatedText, rowMappings } = concatenateTextAndMapRows(textLayers);
-  console.log(concatenatedText);
-  console.log(rowMappings);
-  // Send concatenated text to Flask backend
-  axios.post('http://localhost:5000/process_text', { text: concatenatedText, query: searchQuery.value })
+// Search text within the PDF and interact with a backend service
+const performSearch = () => {
+  if (!searchQuery.value) return
+  const textLayers = pdfViewer.value.querySelectorAll('.textLayer')
+  const { combinedText, textMappings } = combineTextAndMap(textLayers)
+  console.log(combinedText)
+  console.log(textMappings)
+  axios.post('http://localhost:5000/process_text', { text: combinedText, query: searchQuery.value })
     .then(response => {
-      const paragraph = response.data.highlight;
-      const paragraphPosition = findParagraphPosition(concatenatedText, paragraph);
-      console.log(paragraphPosition);
-      const rowsToHighlight = identifyRowsForHighlighting(rowMappings, paragraphPosition);
-      console.log(rowsToHighlight);
-      highlightRows(rowsToHighlight);
+      const paragraphPosition = findParagraphPosition(combinedText, response.data.highlight)
+      highlightRows(textMappings, paragraphPosition)
     })
-    .catch(error => {
-      console.error('Error:', error);
-    });
+    .catch(error => console.error('Error:', error))
 }
 
-// Concatenate text from rows and create a mapping for each row
-function concatenateTextAndMapRows(textLayers) {
-  let concatenatedText = '';
-  rowMappings.value = [];
-  // eslint-disable-next-line
-  textLayers.forEach((layer, index) => {
-    // change granularity to line
+// Combine text from PDF text layers and map each text's position
+const combineTextAndMap = (textLayers) => {
+  let combinedText = ''
+  textMappings.value = []
+  textLayers.forEach((layer) => {
     Array.from(layer.childNodes).forEach(node => {
       if (node.nodeType === Node.ELEMENT_NODE) {
-        const layerText = getNodeText(node).trim() + ' ';
-        const start = concatenatedText.length;
-        concatenatedText += layerText;
-        rowMappings.value.push({ start, end: start + layerText.length - 1, node });
+        const nodeText = getNodeText(node).trim() + ' '
+        const start = combinedText.length
+        combinedText += nodeText
+        textMappings.value.push({ start, end: start + nodeText.length - 1, node })
       }
-    });
-  });
-  return { concatenatedText, rowMappings };
+    })
+  })
+  return { combinedText, textMappings }
 }
 
-function getNodeText(node) {
-  if (node.nodeType === Node.TEXT_NODE) {
-    return node.nodeValue;
-  } else if (node.nodeType === Node.ELEMENT_NODE) {
-    return Array.from(node.childNodes).map(getNodeText).join(' ');
-  }
-}
+const getNodeText = (node) => node.nodeType === Node.TEXT_NODE ? node.nodeValue :
+  node.nodeType === Node.ELEMENT_NODE ? Array.from(node.childNodes).map(getNodeText).join(' ') : ''
 
-// Find the start and end positions of the paragraph in the concatenated text
-function findParagraphPosition(concatenatedText, paragraph) {
-  const startPosition = concatenatedText.indexOf(paragraph);
-  return { startPosition, endPosition: startPosition + paragraph.length - 1 };
+// Process highlight response from backend
+function findParagraphPosition(combinedText, paragraph) {
+  const startPosition = combinedText.indexOf(paragraph)
+  return { startPosition, endPosition: startPosition + paragraph.length - 1 }
 }
 
 // Identify rows that contain parts of the paragraph
-function identifyRowsForHighlighting(rowMappings, paragraphPosition) {
-  return rowMappings.value.filter(mapping =>
+function highlightRows(textMappings, paragraphPosition) {
+  textMappings.value.filter(mapping =>
     mapping.start <= paragraphPosition.endPosition &&
     mapping.end >= paragraphPosition.startPosition
-  );
-}
-
-// Highlight the identified rows
-function highlightRows(rowsToHighlight) {
-  rowsToHighlight.forEach(mapping => {
+  ).forEach(mapping => {
     highlightNode(mapping.node)
-  });
+  })
 }
-
+// eslint-disable-next-line no-unused-vars
 function highlightNode(node) {
   // highlight the entire node
-  node.style.backgroundColor = "yellow";
+  node.style.backgroundColor = "yellow"
 }
 
-onMounted(() => {
-  // get full text of pdf
-  // var text = "";
-  // var intervalId = setInterval(() => {
-  //   var textLayers = pdfViewerRef.value.querySelectorAll('.textLayer');
-  //   if (textLayers.length > 0) {
-  //     clearInterval(intervalId); // Stop polling
-  //     textLayers.forEach(layer => {
-  //       if (layer) {
-  //         text += getText(layer);
-  //       }
-  //     });
-  //     // console.log(text);
-  //   }
-  // }, 500); // Check every 500ms
-});
 
-function highlightText() {
-  if (!highlightQuery.value) return; // Don't highlight if query is empty
-  pdfReloadKey.value++; // Increment key to force re-render of VuePdfEmbed
-  // continue after re-render
+// Perform highlight based on user input
+const performHighlight = () => {
+  if (!highlightQuery.value) return
+  pdfRenderKey.value++
   setTimeout(() => {
-    var textLayers = pdfViewerRef.value.querySelectorAll('.textLayer');
-    textLayers.forEach(layer => {
-      highlightWordInLayer(layer);
-    });
-  }, 100);
+    const textLayers = pdfViewer.value.querySelectorAll('.textLayer')
+    textLayers.forEach(layer => highlightLayerText(layer, highlightQuery.value))
+  }, 100)
 }
-function highlightWordInLayer(layer) {
-  if (!highlightQuery.value) return; // Don't highlight if query is empty
-  var re = new RegExp(`\\b${highlightQuery.value}\\b`, "gi");
 
-  // Function to recursively highlight text nodes
-  function highlightTextNodes(node) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      var text = node.nodeValue;
-      var matches = text.match(re);
-      if (matches) {
-        var highlightedText = text.replace(re, "<span class='highlight'>$&</span>");
-        var fragment = document.createRange().createContextualFragment(highlightedText);
-        node.replaceWith(fragment);
-      }
+// Highlight specific text within a layer
+const highlightLayerText = (layer, query) => {
+  const regex = new RegExp(`\\b${query}\\b`, "gi")
+  const highlightNodeText = (node) => {
+    if (node.nodeType === Node.TEXT_NODE && regex.test(node.nodeValue)) {
+      const highlightedHTML = node.nodeValue.replace(regex, "<span class='highlight'>$&</span>")
+      const fragment = document.createRange().createContextualFragment(highlightedHTML)
+      node.replaceWith(fragment)
     } else if (node.nodeType === Node.ELEMENT_NODE) {
-      Array.from(node.childNodes).forEach(highlightTextNodes);
+      Array.from(node.childNodes).forEach(highlightNodeText)
     }
   }
-
-  highlightTextNodes(layer);
+  highlightNodeText(layer)
 }
 
-
-// eslint-disable-next-line
+// eslint-disable-next-line no-unused-vars
 const props = defineProps({
   pdfSource: String
 })
