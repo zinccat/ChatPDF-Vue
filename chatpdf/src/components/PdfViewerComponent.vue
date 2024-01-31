@@ -1,28 +1,21 @@
 <template>
-  <div v-if="pdfSource">
-    <button @click="extractText">Extract Text</button>
-    <div v-if="extractedText">{{ extractedText }}</div>
-    <VuePdfEmbed annotation-layer text-layer :source="pdfSource" />
-  </div>
+  <button @click="extractText">Extract Text</button>
+  <div v-if="extractedText">{{ extractedText }}</div>
+  <div ref="pdfViewerContainer"></div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import VuePdfEmbed from 'vue-pdf-embed';
-import 'vue-pdf-embed/dist/style/index.css';
-import 'vue-pdf-embed/dist/style/annotationLayer.css';
-import 'vue-pdf-embed/dist/style/textLayer.css';
-import { GlobalWorkerOptions } from 'vue-pdf-embed/dist/index.essential.mjs';
-import PdfWorker from 'pdfjs-dist/build/pdf.worker.js?url';
-import * as pdfjsLib from 'pdfjs-dist';
+import { onMounted, ref } from 'vue';
+import * as pdfjsLib from 'pdfjs-dist/build/pdf';
+import PdfWorker from 'pdfjs-dist/build/pdf.worker.entry';
 
-GlobalWorkerOptions.workerSrc = PdfWorker;
+pdfjsLib.GlobalWorkerOptions.workerSrc = PdfWorker;
 
-// eslint-disable-next-line
 const props = defineProps({
   pdfSource: String
 });
 
+const pdfViewerContainer = ref(null);
 const extractedText = ref('');
 
 const extractText = async () => {
@@ -41,8 +34,28 @@ const extractText = async () => {
   extractedText.value = fullText;
 };
 
-onMounted(() => {
-  // Optionally call extractText here if you want to auto-load the text
-  // extractText();
+onMounted(async () => {
+  const loadingTask = pdfjsLib.getDocument(props.pdfSource);
+  const pdfDocument = await loadingTask.promise;
+
+  for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber++) {
+    const page = await pdfDocument.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 1.5 });
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+
+    const renderContext = {
+      canvasContext: context,
+      viewport: viewport
+    };
+    await page.render(renderContext).promise;
+
+    pdfViewerContainer.value.appendChild(canvas);
+
+    // Now you need to add your logic to highlight 'the' on the canvas
+    // This is complex as you need to parse the text items, calculate their positions, and then draw the highlights on the canvas
+  }
 });
 </script>
