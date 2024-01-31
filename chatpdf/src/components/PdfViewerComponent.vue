@@ -5,7 +5,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, defineProps, watchEffect } from 'vue';
 import * as pdfjsLib from 'pdfjs-dist/build/pdf';
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.entry';
 
@@ -35,12 +35,25 @@ const extractText = async () => {
 };
 
 onMounted(async () => {
+  // Initially load the PDF
+  // await loadPDF();
+
+  // Watch for changes in the pdfSource prop and reload the PDF when it changes
+  watchEffect(() => {
+    loadPDF();
+  });
+});
+
+async function loadPDF() {
+  // Clear previous canvases
+  pdfViewerContainer.value.innerHTML = '';
+
   const loadingTask = pdfjsLib.getDocument(props.pdfSource);
   const pdfDocument = await loadingTask.promise;
 
   for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber++) {
     const page = await pdfDocument.getPage(pageNumber);
-    const viewport = page.getViewport({ scale: 1.5 });
+    const viewport = page.getViewport({ scale: 1 });
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     canvas.height = viewport.height;
@@ -54,8 +67,8 @@ onMounted(async () => {
 
     pdfViewerContainer.value.appendChild(canvas);
 
-    // Now you need to add your logic to highlight 'the' on the canvas
-    // This is complex as you need to parse the text items, calculate their positions, and then draw the highlights on the canvas
+    // Highlight the occurrences of 'the' on the canvas
+    // highlightText(canvas, 'the');
   }
-});
+}
 </script>
