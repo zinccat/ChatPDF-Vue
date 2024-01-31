@@ -27,62 +27,102 @@ const pdfViewerRef = ref(null);
 const searchQuery = ref("");
 const highlightQuery = ref("");
 const pdfReloadKey = ref(0);
+const rowMappings = ref([]);
 
 const axios = require('axios');
 
 function searchText() {
   if (!searchQuery.value) return; // Don't search if query is empty
   // pdfReloadKey.value++; // Increment key to force re-render of VuePdfEmbed
-
-  // Fetch full text of the PDF
-  var fullText = "";
-  var textLayers = pdfViewerRef.value.querySelectorAll('.textLayer');
-  textLayers.forEach(layer => {
-    fullText += getText(layer) + " ";
-  });
-
-  // Send full text to Flask backend for processing
-  axios.post('http://localhost:5000/process_text', { text: fullText })
+  // Concatenate text from all text layers
+  const textLayers = pdfViewerRef.value.querySelectorAll('.textLayer');
+  const { concatenatedText, rowMappings } = concatenateTextAndMapRows(textLayers);
+  console.log(concatenatedText);
+  console.log(rowMappings);
+  // Send concatenated text to Flask backend
+  axios.post('http://localhost:5000/process_text', { text: concatenatedText, query: searchQuery.value })
     .then(response => {
-      const highlightString = response.data.highlight;
-      highlightQuery.value = highlightString; // Update the highlight query with response
-      highlightText(); // Highlight the text
+      const paragraph = response.data.highlight;
+      const paragraphPosition = findParagraphPosition(concatenatedText, paragraph);
+      console.log(paragraphPosition);
+      const rowsToHighlight = identifyRowsForHighlighting(rowMappings, paragraphPosition);
+      console.log(rowsToHighlight);
+      highlightRows(rowsToHighlight);
     })
     .catch(error => {
       console.error('Error:', error);
     });
 }
 
+// Concatenate text from rows and create a mapping for each row
+function concatenateTextAndMapRows(textLayers) {
+  let concatenatedText = '';
+  rowMappings.value = [];
+  // eslint-disable-next-line
+  textLayers.forEach((layer, index) => {
+    // change granularity to line
+    Array.from(layer.childNodes).forEach(node => {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const layerText = getNodeText(node).trim() + ' ';
+        const start = concatenatedText.length;
+        concatenatedText += layerText;
+        rowMappings.value.push({ start, end: start + layerText.length - 1, node });
+      }
+    });
+  });
+  return { concatenatedText, rowMappings };
+}
+
+function getNodeText(node) {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.nodeValue;
+  } else if (node.nodeType === Node.ELEMENT_NODE) {
+    return Array.from(node.childNodes).map(getNodeText).join(' ');
+  }
+}
+
+// Find the start and end positions of the paragraph in the concatenated text
+function findParagraphPosition(concatenatedText, paragraph) {
+  const startPosition = concatenatedText.indexOf(paragraph);
+  return { startPosition, endPosition: startPosition + paragraph.length - 1 };
+}
+
+// Identify rows that contain parts of the paragraph
+function identifyRowsForHighlighting(rowMappings, paragraphPosition) {
+  return rowMappings.value.filter(mapping =>
+    mapping.start <= paragraphPosition.endPosition &&
+    mapping.end >= paragraphPosition.startPosition
+  );
+}
+
+// Highlight the identified rows
+function highlightRows(rowsToHighlight) {
+  rowsToHighlight.forEach(mapping => {
+    highlightNode(mapping.node)
+  });
+}
+
+function highlightNode(node) {
+  // highlight the entire node
+  node.style.backgroundColor = "yellow";
+}
+
 onMounted(() => {
   // get full text of pdf
-  var text = "";
-  var intervalId = setInterval(() => {
-    var textLayers = pdfViewerRef.value.querySelectorAll('.textLayer');
-    if (textLayers.length > 0) {
-      clearInterval(intervalId); // Stop polling
-      textLayers.forEach(layer => {
-        if (layer) {
-          text += getText(layer);
-        }
-      });
-      console.log(text);
-    }
-  }, 500); // Check every 500ms
+  // var text = "";
+  // var intervalId = setInterval(() => {
+  //   var textLayers = pdfViewerRef.value.querySelectorAll('.textLayer');
+  //   if (textLayers.length > 0) {
+  //     clearInterval(intervalId); // Stop polling
+  //     textLayers.forEach(layer => {
+  //       if (layer) {
+  //         text += getText(layer);
+  //       }
+  //     });
+  //     // console.log(text);
+  //   }
+  // }, 500); // Check every 500ms
 });
-
-function getText(layer) {
-  var text = "";
-  // remove preceding and trailing whitespaces
-  Array.from(layer.childNodes).forEach(node => {
-    if (node.nodeType === Node.TEXT_NODE) {
-      text += node.nodeValue.trim();
-    } else if (node.nodeType === Node.ELEMENT_NODE) {
-      text += getText(node);
-    }
-    text += " ";
-  });
-  return text;
-}
 
 function highlightText() {
   if (!highlightQuery.value) return; // Don't highlight if query is empty
@@ -91,12 +131,11 @@ function highlightText() {
   setTimeout(() => {
     var textLayers = pdfViewerRef.value.querySelectorAll('.textLayer');
     textLayers.forEach(layer => {
-      highlightLayer(layer);
+      highlightWordInLayer(layer);
     });
   }, 100);
 }
-
-function highlightLayer(layer) {
+function highlightWordInLayer(layer) {
   if (!highlightQuery.value) return; // Don't highlight if query is empty
   var re = new RegExp(`\\b${highlightQuery.value}\\b`, "gi");
 
