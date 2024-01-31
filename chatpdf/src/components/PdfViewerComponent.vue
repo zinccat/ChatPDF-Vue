@@ -1,74 +1,63 @@
+// PdfViewerComponent.vue
+/* eslint-disable */
 <template>
-  <button @click="extractText">Extract Text</button>
-  <div v-if="extractedText">{{ extractedText }}</div>
-  <div ref="pdfViewerContainer"></div>
+  <div v-if="pdfSource" ref="pdfViewerRef">
+    <VuePdfEmbed annotation-layer text-layer :source="pdfSource" />
+  </div>
 </template>
 
 <script setup>
-import { onMounted, ref, defineProps, watchEffect } from 'vue';
-import * as pdfjsLib from 'pdfjs-dist/build/pdf';
-import PdfWorker from 'pdfjs-dist/build/pdf.worker.entry';
+import VuePdfEmbed from 'vue-pdf-embed'
+import 'vue-pdf-embed/dist/style/index.css'
+import 'vue-pdf-embed/dist/style/annotationLayer.css'
+import 'vue-pdf-embed/dist/style/textLayer.css'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = PdfWorker;
+import { GlobalWorkerOptions } from 'vue-pdf-embed/dist/index.essential.mjs'
+import PdfWorker from 'pdfjs-dist/build/pdf.worker.js?url'
 
-const props = defineProps({
-  pdfSource: String
-});
+GlobalWorkerOptions.workerSrc = PdfWorker
 
-const pdfViewerContainer = ref(null);
-const extractedText = ref('');
+import { onMounted, ref } from 'vue';
 
-const extractText = async () => {
-  const loadingTask = pdfjsLib.getDocument(props.pdfSource);
-  const pdfDocument = await loadingTask.promise;
-  let fullText = '';
+const pdfViewerRef = ref(null);
 
-  for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber++) {
-    const page = await pdfDocument.getPage(pageNumber);
-    const textContent = await page.getTextContent();
-    const pageText = textContent.items.map(item => item.str).join(' ');
-    fullText += pageText + '\n';
-    page.cleanup();
+onMounted(() => {
+  if (pdfViewerRef.value) {
+    const intervalId = setInterval(() => {
+      var textLayers = pdfViewerRef.value.querySelectorAll('.textLayer');
+      
+      if (textLayers.length > 0) {
+        clearInterval(intervalId); // Stop polling
+        textLayers.forEach(layer => {
+          if (layer) {
+            highlightLayer(layer);
+          }
+        });
+      }
+    }, 500); // Check every 500ms
   }
-
-  extractedText.value = fullText;
-};
-
-onMounted(async () => {
-  // Initially load the PDF
-  // await loadPDF();
-
-  // Watch for changes in the pdfSource prop and reload the PDF when it changes
-  watchEffect(() => {
-    loadPDF();
-  });
 });
 
-async function loadPDF() {
-  // Clear previous canvases
-  pdfViewerContainer.value.innerHTML = '';
-
-  const loadingTask = pdfjsLib.getDocument(props.pdfSource);
-  const pdfDocument = await loadingTask.promise;
-
-  for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber++) {
-    const page = await pdfDocument.getPage(pageNumber);
-    const viewport = page.getViewport({ scale: 1 });
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
-
-    const renderContext = {
-      canvasContext: context,
-      viewport: viewport
-    };
-    await page.render(renderContext).promise;
-
-    pdfViewerContainer.value.appendChild(canvas);
-
-    // Highlight the occurrences of 'the' on the canvas
-    // highlightText(canvas, 'the');
+/* eslint-disable */
+function highlightLayer(layer) {
+  var query = "the";
+  var re = new RegExp(query, "gi");
+  var matches = layer.textContent.match(re);
+  if (matches) {
+    layer.innerHTML = layer.innerHTML.replace(re, function(match) {
+      return "<span class='highlight'>" + match + "</span>";
+    });
   }
 }
+
+// eslint-disable-next-line
+const props = defineProps({
+  pdfSource: String
+})
 </script>
+
+<style>
+.highlight {
+  background-color: yellow;
+}
+</style>
