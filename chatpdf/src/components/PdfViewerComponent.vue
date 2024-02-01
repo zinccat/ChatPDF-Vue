@@ -1,10 +1,36 @@
 <template>
-  <div>
-    <input v-model="searchQuery" type="text" placeholder="Enter text to search" />
-    <button @click="performSearch">Search Text</button>
-    <input v-model="highlightQuery" type="text" placeholder="Enter text to highlight" />
-    <button @click="performHighlight">Highlight Text</button>
-    <div v-if="pdfSource" ref="pdfViewer">
+  <div class="flex flex-col space-y-4 p-4">
+    <div class="flex space-x-2">
+      <input 
+        v-model="searchQuery" 
+        type="text" 
+        placeholder="Enter text to search" 
+        class="flex-1 p-2 border border-gray-300 rounded"
+      />
+      <button 
+        @click="performSearch" 
+        class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+      >
+        Search Text
+      </button>
+    </div>
+
+    <div class="flex space-x-2">
+      <input 
+        v-model="highlightQuery" 
+        type="text" 
+        placeholder="Enter text to highlight" 
+        class="flex-1 p-2 border border-gray-300 rounded"
+      />
+      <button 
+        @click="performHighlight" 
+        class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+      >
+        Highlight Text
+      </button>
+    </div>
+
+    <div v-if="pdfSource" ref="pdfViewer" class="border border-gray-300 rounded overflow-hidden">
       <VuePdfEmbed :source="pdfSource" :key="pdfRenderKey" annotation-layer text-layer />
     </div>
   </div>
@@ -35,11 +61,11 @@ const performSearch = () => {
   if (!searchQuery.value) return
   const textLayers = pdfViewer.value.querySelectorAll('.textLayer')
   const { combinedText, textMappings } = combineTextAndMap(textLayers)
-  console.log(combinedText)
-  console.log(textMappings)
-  axios.post('http://localhost:5000/process_text', { text: combinedText, query: searchQuery.value })
+  axios.post('http://localhost:5005/process_text', { text: combinedText, query: searchQuery.value })
     .then(response => {
+      console.log(response.data.highlight)
       const paragraphPosition = findParagraphPosition(combinedText, response.data.highlight)
+      console.log(paragraphPosition)
       highlightRows(textMappings, paragraphPosition)
     })
     .catch(error => console.error('Error:', error))

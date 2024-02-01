@@ -1,10 +1,12 @@
 # app.py (Flask Backend)
 from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 
 app = Flask(__name__)
+# app.config['CORS_HEADERS'] = 'Content-Type'
 CORS(app)
 
+@cross_origin()
 @app.route('/process_text', methods=['POST'])
 def process_text():
     data = request.json
@@ -17,9 +19,11 @@ def process_text():
     # For example, find specific keywords or patterns
     # This is a placeholder for your text processing logic
     processed_text = your_text_processing_function(pdf_text)
-    processed_text = "the"
 
-    return jsonify({"highlight": query })
+    response = jsonify({"highlight": query})
+    # response.headers.add('Access-Control-Allow-Origin', '*')
+
+    return response
 
 def your_text_processing_function(text):
     # Implement your text processing logic here
@@ -27,4 +31,4 @@ def your_text_processing_function(text):
     return text
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5005)
