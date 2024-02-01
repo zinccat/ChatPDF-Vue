@@ -12,11 +12,9 @@
 import { ref } from 'vue'
 import axios from 'axios'
 import { highlightRows } from './utils.js'
-import { pdfViewer, performRequestWithExponentialBackoff } from './utils.js'
-//
+import { pdfViewer, performRequestWithExponentialBackoff, combineTextAndMap } from './utils.js'
 
 const searchQuery = ref("")
-const textMappings = ref([])
 
 // Search text within the PDF and interact with a backend service
 const performSearch = async () => {
@@ -43,26 +41,6 @@ const performSearch = async () => {
         console.error('Error:', error)
     }
 }
-
-// Combine text from PDF text layers and map each text's position
-const combineTextAndMap = (textLayers) => {
-    let combinedText = ''
-    textMappings.value = []
-    textLayers.forEach((layer) => {
-        Array.from(layer.childNodes).forEach(node => {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-                const nodeText = getNodeText(node).trim() + ' '
-                const start = combinedText.length
-                combinedText += nodeText
-                textMappings.value.push({ start, end: start + nodeText.length - 1, node })
-            }
-        })
-    })
-    return { combinedText, textMappings }
-}
-
-const getNodeText = (node) => node.nodeType === Node.TEXT_NODE ? node.nodeValue :
-    node.nodeType === Node.ELEMENT_NODE ? Array.from(node.childNodes).map(getNodeText).join(' ') : ''
 
 // Process highlight response from backend
 function findParagraphPosition(combinedText, paragraph) {
