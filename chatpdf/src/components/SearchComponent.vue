@@ -31,14 +31,7 @@ const performSearch = async () => {
     const sendRequest = async () => {
         return axios.post('http://localhost:5005/process_text', { text: combinedText, query: searchQuery.value })
     }
-    // axios.post('http://localhost:5005/process_text', { text: combinedText, query: searchQuery.value })
-    //     .then(response => {
-    //         console.log(response.data.highlight)
-    //         const paragraphPosition = findParagraphPosition(combinedText, response.data.highlight)
-    //         console.log(paragraphPosition)
-    //         highlightRows(textMappings, paragraphPosition)
-    //     })
-    //     .catch(error => console.error('Error:', error))
+    
     try {
         console.log('sendRequest')
         const response = await performRequestWithExponentialBackoff(sendRequest)

@@ -2,12 +2,29 @@
 from flask_cors import CORS, cross_origin
 from flask import Flask, request, session, jsonify
 from flask_session import Session
+# from werkzeug.utils import secure_filename
 import uuid
+import os
+from dotenv import load_dotenv
+from llm import create_thread, create_message, create_run, create_file_link, get_message_list, get_message_value_list, client, handle_uploaded_file, get_message_and_citations
+from logging import getLogger
+import time
+
+load_dotenv()
+
+logger = getLogger(__name__)
 
 app = Flask(__name__)
 # Configure the Secret Key and Flask-Session
-app.config["SECRET_KEY"] = "your-secret-key"
-app.config["SESSION_TYPE"] = "filesystem"
+app.config["SESSION_PERMANENT"] = False
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
+app.config["SESSION_TYPE"] = os.environ.get("SESSION_TYPE")
+UPLOAD_FOLDER = 'uploads'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# Ensure the upload folder exists
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 Session(app)
 CORS(app)
 
@@ -28,6 +45,7 @@ def chat():
         session['session_id'] = str(uuid.uuid4())
 
     user_message = request.json.get('message')
+    fileid = request.json.get('fileid')
 
     if 'messages' not in session:
         session['messages'] = []
@@ -36,7 +54,7 @@ def chat():
     session['messages'].append({'text': user_message, 'isSentByUser': True, 'session_id': session['session_id']})
 
     # Process the message to generate a response
-    response = process_message(user_message)
+    response, annotations = get_response(user_message, fileid)
 
     # Save bot's response to session
     session['messages'].append({'text': response, 'isSentByUser': False, 'session_id': session['session_id']})
@@ -46,9 +64,54 @@ def chat():
 
     return reply
 
-def process_message(message):
-    # Placeholder for message processing logic
-    return f"Echo: {message}"
+def get_response(user_input, fileid):
+    if "thread" not in session:
+        session["thread"] = create_thread(user_input, fileid)
+    else:
+        create_message(session["thread"], user_input, fileid)
+    run = create_run(session["thread"])
+    run = client.beta.threads.runs.retrieve(
+        thread_id=session["thread"].id, run_id=run.id
+    )
+
+    while run.status == "in_progress":
+        logger.info("run.status: %s", run.status)
+    
+        time.sleep(1)
+        run = client.beta.threads.runs.retrieve(
+            thread_id=session["thread"].id, run_id=run.id
+        )
+        run_steps = client.beta.threads.runs.steps.list(
+            thread_id=session["thread"].id, run_id=run.id
+        )
+        logger.info("run_steps: %s", run_steps)
+    
+    if run.status == "completed":
+        messages = client.beta.threads.messages.list(thread_id=session["thread"].id)
+        messages_list, annotations = get_message_and_citations(messages)
+        print("messages_list:", messages_list)
+        response = messages_list[-1]
+        annotations = annotations
+        print("response:", response)
+        print("annotations:", annotations)
+        return response, annotations
+    else:
+        return "Run failed"
+
+# define a api to upload file
+@cross_origin()
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    file = request.files['file']
+    # print(file)
+    if file:
+        # change to bytesIO
+        file = file.read()
+        file_obj = handle_uploaded_file(file)
+        return jsonify({'status': 'success', 'fileid': file_obj.id})
+    else:
+        return jsonify({'status': 'error', 'message': 'No file found'})
+    
 
 @cross_origin()
 @app.route('/clear_messages', methods=['POST'])

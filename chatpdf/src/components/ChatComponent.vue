@@ -31,11 +31,12 @@ const sendMessage = async () => {
     newMessage.value = "";
 
     const sendRequest = async () => {
-        return axios.post('http://localhost:5005/chat', { message: userMessage });
+        return axios.post('http://localhost:5005/chat', { message: userMessage, fileid: localStorage.getItem('fileid') });
     };
 
     try {
-        const response = await performRequestWithExponentialBackoff(sendRequest);
+        // const response = await performRequestWithExponentialBackoff(sendRequest);
+        const response = await sendRequest();
         messages.value.push({ text: response.data.reply, isSentByUser: false });
     } catch (error) {
         console.error('Error sending message:', error);
@@ -44,8 +45,11 @@ const sendMessage = async () => {
 };
 
 const clearMessages = async () => {
+    const clearMessagesRequest = async () => {
+        return axios.post('http://localhost:5005/clear_messages');
+    };
     try {
-        const response = await performRequestWithExponentialBackoff(axios.post('http://localhost:5005/clear_messages'))
+        const response = await performRequestWithExponentialBackoff(clearMessagesRequest);
         if (response.data.status === 'success') {
             messages.value = []
         }
