@@ -1,13 +1,13 @@
 // UploadComponent.vue
 <template>
-  <div class="flex justify-center items-center h-16 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300">
+  <div class="flex justify-start items-center h-16 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300">
     <input 
       type="file" 
       @change="handleFileUpload" 
       accept="application/pdf" 
       class="w-full h-full opacity-0 cursor-pointer"
     >
-    <div class="text-gray-500">Click or drag a PDF file here to upload</div>
+    <div class="text-gray-500 pl-4">Click or drag a PDF file here to upload</div>
   </div>
 </template>
 

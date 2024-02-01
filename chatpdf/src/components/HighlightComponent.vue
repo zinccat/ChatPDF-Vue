@@ -40,5 +40,3 @@ const highlightLayerText = (layer, query) => {
     highlightNodeText(layer)
 }
 </script>
-
-<!-- export { highlightRows } -->
