@@ -2,11 +2,9 @@ import os
 import time
 import base64
 import re
-import json
 
 import openai
 from openai.types.beta.threads import MessageContentImageFile
-# from tools import TOOL_MAP
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,10 +12,6 @@ load_dotenv()
 api_key = os.environ.get("OPENAI_API_KEY")
 client = openai.OpenAI(api_key=api_key)
 assistant_id = os.environ.get("ASSISTANT_ID")
-instructions = os.environ.get("RUN_INSTRUCTIONS", "")
-assistant_title = os.environ.get("ASSISTANT_TITLE", "Assistants API UI")
-enabled_file_upload_message = os.environ.get("ENABLED_FILE_UPLOAD_MESSAGE", "Upload a file")
-
 
 def create_thread(content, file_id):
     messages = [
@@ -42,7 +36,7 @@ def create_message(thread, content, file_id):
 
 def create_run(thread):
     run = client.beta.threads.runs.create(
-        thread_id=thread.id, assistant_id=assistant_id, instructions=instructions
+        thread_id=thread.id, assistant_id=assistant_id
     )
     return run
 
