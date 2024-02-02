@@ -11,7 +11,7 @@
 </template>
 
 <script setup>
-import axios from 'axios';
+// import axios from 'axios';
 
 // Emits (you might not need this anymore if the backend directly handles the file)
 const emit = defineEmits(['file-uploaded'])
@@ -24,27 +24,27 @@ const handleFileUpload = (event) => {
     reader.onload = () => {
       emit('file-uploaded', reader.result)
     }
-    const formData = new FormData();
-    formData.append('file', file);
+    // const formData = new FormData();
+    // formData.append('file', file);
     
-    // Update the URL to your Flask endpoint
-    axios.post('http://localhost:5005/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
-    .then(response => {
-      console.log(response.data);
-      // Handle success, you can emit an event if needed
-      // emit('file-uploaded', response.data);
-      // save fileid to localstorage
-      localStorage.setItem('fileid', response.data.fileid);
-    })
-    .catch(error => {
-      console.error(error);
-      // Handle error
-      localStorage.removeItem('fileid');
-    });
+    // // Update the URL to your Flask endpoint
+    // axios.post('http://localhost:5005/upload', formData, {
+    //   headers: {
+    //     'Content-Type': 'multipart/form-data'
+    //   }
+    // })
+    // .then(response => {
+    //   console.log(response.data);
+    //   // Handle success, you can emit an event if needed
+    //   // emit('file-uploaded', response.data);
+    //   // save fileid to localstorage
+    //   localStorage.setItem('fileid', response.data.fileid);
+    // })
+    // .catch(error => {
+    //   console.error(error);
+    //   // Handle error
+    //   localStorage.removeItem('fileid');
+    // });
   }
 }
 </script>

@@ -19,13 +19,52 @@
 <script setup>
 import { ref } from 'vue'
 import axios from 'axios'
-import { performRequestWithExponentialBackoff } from './utils.js'
+import { performRequestWithExponentialBackoff, combineTextAndMap, pdfViewer } from './utils.js'
 
 const messages = ref([])
 const newMessage = ref("")
 
+const uploadFulltext = async () => {
+    if (!pdfViewer.value) {
+        console.error('PDF viewer not available');
+        return;
+    }
+
+    const textLayers = pdfViewer.value.querySelectorAll('.textLayer');
+    // eslint-disable-next-line
+    const { combinedText, textMappings } = combineTextAndMap(textLayers);
+
+    // Convert combinedText into a single JSON object per line (JSON Lines format)
+    const jsonlString = JSON.stringify({ text: combinedText }) + '\n';
+    const blob = new Blob([jsonlString], { type: 'application/json' });
+
+    // Create FormData and append the Blob as 'file'
+    const formData = new FormData();
+    formData.append('file', blob, 'uploadedText.jsonl');
+
+    // Upload combinedText in JSON Lines format to backend
+    const uploadFulltextRequest = async () => {
+        return axios.post('http://localhost:5005/upload', formData);
+    };
+
+    try {
+        const response = await performRequestWithExponentialBackoff(uploadFulltextRequest);
+        // Save fileid to localStorage
+        localStorage.setItem('fileid', response.data.fileid);
+        console.log(response.data);
+    } catch (error) {
+        console.error('Error uploading fulltext:', error);
+        // Handle error or notify the user
+        localStorage.removeItem('fileid');
+    }
+};
+
 const sendMessage = async () => {
     if (!newMessage.value.trim()) return;
+    // if no previous messages, upload fulltext
+    if (messages.value.length === 0) {
+        await uploadFulltext();
+    }
     const userMessage = newMessage.value.trim();
     messages.value.push({ text: userMessage, isSentByUser: true });
     newMessage.value = "";

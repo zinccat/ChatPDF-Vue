@@ -2,11 +2,10 @@
 from flask_cors import CORS, cross_origin
 from flask import Flask, request, session, jsonify
 from flask_session import Session
-# from werkzeug.utils import secure_filename
 import uuid
 import os
 from dotenv import load_dotenv
-from llm import create_thread, create_message, create_run, create_file_link, get_message_list, get_message_value_list, client, handle_uploaded_file, get_message_and_citations
+from llm import create_thread, create_message, create_run, client, handle_uploaded_file, get_message_and_citations
 from logging import getLogger
 import time
 
@@ -54,6 +53,8 @@ def chat():
     session['messages'].append({'text': user_message, 'isSentByUser': True, 'session_id': session['session_id']})
 
     # Process the message to generate a response
+    print("user_message:", user_message)
+    print("fileid:", fileid)
     response, annotations = get_response(user_message, fileid)
 
     # Save bot's response to session
@@ -89,11 +90,8 @@ def get_response(user_input, fileid):
     if run.status == "completed":
         messages = client.beta.threads.messages.list(thread_id=session["thread"].id)
         messages_list, annotations = get_message_and_citations(messages)
-        print("messages_list:", messages_list)
         response = messages_list[-1]
         annotations = annotations
-        print("response:", response)
-        print("annotations:", annotations)
         return response, annotations
     else:
         return "Run failed"
@@ -103,9 +101,7 @@ def get_response(user_input, fileid):
 @app.route('/upload', methods=['POST'])
 def upload_file():
     file = request.files['file']
-    # print(file)
     if file:
-        # change to bytesIO
         file = file.read()
         file_obj = handle_uploaded_file(file)
         return jsonify({'status': 'success', 'fileid': file_obj.id})
