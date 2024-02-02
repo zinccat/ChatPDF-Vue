@@ -19,7 +19,7 @@
 <script setup>
 import { ref } from 'vue'
 import axios from 'axios'
-import { performRequestWithExponentialBackoff, combineTextAndMap, pdfViewer } from './utils.js'
+import { performRequestWithExponentialBackoff, combineTextAndMap, pdfViewer, searchQuery, performSearch } from './utils.js'
 
 const messages = ref([])
 const newMessage = ref("")
@@ -33,6 +33,8 @@ const uploadFulltext = async () => {
     const textLayers = pdfViewer.value.querySelectorAll('.textLayer');
     // eslint-disable-next-line
     const { combinedText, textMappings } = combineTextAndMap(textLayers);
+
+    console.log('combinedText:', combinedText);
 
     // Convert combinedText into a single JSON object per line (JSON Lines format)
     const jsonlString = JSON.stringify({ text: combinedText }) + '\n';
@@ -51,13 +53,18 @@ const uploadFulltext = async () => {
         const response = await performRequestWithExponentialBackoff(uploadFulltextRequest);
         // Save fileid to localStorage
         localStorage.setItem('fileid', response.data.fileid);
-        console.log(response.data);
     } catch (error) {
         console.error('Error uploading fulltext:', error);
         // Handle error or notify the user
         localStorage.removeItem('fileid');
     }
 };
+
+function decodeUnicodeStr(str) {
+  // Wrapping the input string in double quotes makes it a valid JSON string.
+  // JSON.parse will interpret the Unicode escape sequences and convert them to actual characters.
+  return JSON.parse(`"${str}"`);
+}
 
 const sendMessage = async () => {
     if (!newMessage.value.trim()) return;
@@ -76,7 +83,13 @@ const sendMessage = async () => {
     try {
         // const response = await performRequestWithExponentialBackoff(sendRequest);
         const response = await sendRequest();
-        messages.value.push({ text: response.data.reply, annotations: response.data.annotations, isSentByUser: false });
+        // run regex on apply to remove r"【.*?】"
+        messages.value.push({ text: response.data.reply.replace(/【.*?】/g, ''), annotations: response.data.annotations, isSentByUser: false });
+        for (const annotation of response.data.annotations) {
+            searchQuery.value = decodeUnicodeStr(annotation);
+            console.log('searchQuery:', searchQuery.value);
+            performSearch();
+        }
     } catch (error) {
         console.error('Error sending message:', error);
         // Handle error or notify the user

@@ -12,6 +12,7 @@ import time
 load_dotenv()
 
 logger = getLogger(__name__)
+logger.setLevel("INFO")
 
 app = Flask(__name__)
 # Configure the Secret Key and Flask-Session
@@ -53,8 +54,6 @@ def chat():
     session['messages'].append({'text': user_message, 'isSentByUser': True, 'session_id': session['session_id']})
     
     response, annotations = get_response(user_message, fileid)
-
-    print(annotations)
 
     # Save bot's response to session
     session['messages'].append({'text': response, 'isSentByUser': False, 'session_id': session['session_id']})

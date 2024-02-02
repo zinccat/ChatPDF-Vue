@@ -73,10 +73,9 @@ def get_message_and_citations(messages):
             )
 
             if file_citation := getattr(annotation, "file_citation", None):
-                cited_file = client.files.retrieve(file_citation.file_id)
-                citations.append(
-                    f"[{index}] {file_citation.quote} from {cited_file.filename}"
-                )
+                # cited_file = client.files.retrieve(file_citation.file_id)
+                citations.append(file_citation.quote)
+                # f"[{index}] {file_citation.quote} from {cited_file.filename}"
             elif file_path := getattr(annotation, "file_path", None):
                 link_tag = create_file_link(
                     annotation.text.split("/")[-1], file_path.file_id
