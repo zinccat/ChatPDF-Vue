@@ -2,6 +2,8 @@
 
 Chat with your PDF file using OpenAI's assistant API, with highlights for annotations retrieved from the chat.
 
+![Demo](demo.png)
+
 ## Installation
 ### Backend
 In the `backend` directory, run:
