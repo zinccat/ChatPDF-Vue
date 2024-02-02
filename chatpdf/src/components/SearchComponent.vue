@@ -36,6 +36,10 @@ const performSearch = async () => {
         console.log(response.data.highlight)
         const paragraphPosition = findParagraphPosition(combinedText, response.data.highlight)
         console.log(paragraphPosition)
+        if (paragraphPosition.startPosition === -1) {
+            console.error('Highlight not found in combined text')
+            return
+        }
         highlightRows(textMappings, paragraphPosition)
     } catch (error) {
         console.error('Error:', error)

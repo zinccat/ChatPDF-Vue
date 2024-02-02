@@ -51,18 +51,17 @@ def chat():
 
     # Save user's message to session
     session['messages'].append({'text': user_message, 'isSentByUser': True, 'session_id': session['session_id']})
-
-    # Process the message to generate a response
-    print("user_message:", user_message)
-    print("fileid:", fileid)
+    
     response, annotations = get_response(user_message, fileid)
+
+    print(annotations)
 
     # Save bot's response to session
     session['messages'].append({'text': response, 'isSentByUser': False, 'session_id': session['session_id']})
     
-    reply = jsonify({'reply': response, 'session_id': session['session_id']})
-    session["messages"].append({'text': response, 'isSentByUser': False, 'session_id': session['session_id']})
-
+    reply = jsonify({'reply': response, 'session_id': session['session_id'], 'annotations': annotations})
+    session["messages"].append({'text': response, 'annotations': annotations,
+                                'isSentByUser': False, 'session_id': session['session_id']})
     return reply
 
 def get_response(user_input, fileid):

@@ -76,7 +76,7 @@ const sendMessage = async () => {
     try {
         // const response = await performRequestWithExponentialBackoff(sendRequest);
         const response = await sendRequest();
-        messages.value.push({ text: response.data.reply, isSentByUser: false });
+        messages.value.push({ text: response.data.reply, annotations: response.data.annotations, isSentByUser: false });
     } catch (error) {
         console.error('Error sending message:', error);
         // Handle error or notify the user

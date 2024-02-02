@@ -34,7 +34,6 @@ def create_thread(content, file_id):
 def create_message(thread, content, file_id):
     file_ids = []
     if file_id is not None:
-        print("file_id:", file_id)
         file_ids.append(file_id)
     client.beta.threads.messages.create(
         thread_id=thread.id, role="user", content=content, file_ids=file_ids
@@ -94,7 +93,6 @@ def get_message_value_list(messages):
     messages_value_list = []
     for message in messages:
         message_content = ""
-        print(message)
         if not isinstance(message, MessageContentImageFile):
             message_content = message.content[0].text
             annotations = message_content.annotations
@@ -131,9 +129,7 @@ def get_message_list(thread, run):
     completed = False
     while not completed:
         run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
-        print("run.status:", run.status)
         messages = client.beta.threads.messages.list(thread_id=thread.id)
-        print("messages:", "\n".join(get_message_value_list(messages)))
         if run.status == "completed":
             completed = True
         elif run.status == "failed":
