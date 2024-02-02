@@ -1,5 +1,4 @@
 <template>
-    <div class="flex-1 overflow-y-auto p-4" style="scrollbar-width: thin; scrollbar-color: #60a5fa #e5e7eb;">
       <div v-for="(message, index) in messages" :key="index" class="chat-message mb-2">
         <div :class="{ 'text-right': message.isSentByUser, 'text-left': !message.isSentByUser }">
           <span :class="{ 'bg-blue-500': message.isSentByUser, 'bg-gray-300': !message.isSentByUser }"
@@ -17,7 +16,6 @@
           </button>
         </div>
       </div>
-    </div>
   </template>
   
 <script setup>

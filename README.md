@@ -42,3 +42,10 @@ In the `chatpdf` directory, run:
 ```bash
 python app.py
 ```
+
+### Acknowledgements
+Favicon taken from https://icon-icons.com.
+
+Part of the OpenAI's assistant API code was taken from https://github.com/ryo-ma/gpt-assistants-api-ui.
+
+Thanks a lot to all the contributors of the above projects.
