@@ -76,7 +76,7 @@ def get_response(user_input, fileid):
     while run.status == "in_progress":
         logger.info("run.status: %s", run.status)
     
-        time.sleep(1)
+        time.sleep(0.5)
         run = client.beta.threads.runs.retrieve(
             thread_id=session["thread"].id, run_id=run.id
         )
