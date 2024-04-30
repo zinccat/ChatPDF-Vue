@@ -103,8 +103,8 @@ def upload_file():
     if file:
         # Save the file temporarily
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            file.save(temp_file.name + '.pdf')
-            temp_file_path = temp_file.name + '.pdf'
+            file.save(temp_file.name + '.json')
+            temp_file_path = temp_file.name + '.json'
 
         # Process the file
         file_obj = handle_uploaded_file(temp_file_path)
