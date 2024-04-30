@@ -15,6 +15,10 @@
       </div>
     </div>
   </div>
+  <!-- Footer for referencing the code base -->
+  <div class="flex justify-center items-center p-4 bg-gray-100 border-t border-gray-300">
+    <a href="https://github.com/zinccat/ChatPDF-Vue" target="_blank" class="text-blue-500 hover:underline">View on GitHub</a>
+  </div>
 </template>
 
 
