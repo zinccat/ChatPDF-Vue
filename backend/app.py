@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from llm import create_thread, create_message, create_run, client, handle_uploaded_file, get_message_and_citations
 from logging import getLogger
 import time
+import tempfile
 
 load_dotenv()
 
@@ -100,9 +101,21 @@ def get_response(user_input, fileid):
 def upload_file():
     file = request.files['file']
     if file:
-        file = file.read()
-        file_obj = handle_uploaded_file(file)
+        # Save the file temporarily
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            file.save(temp_file.name + '.pdf')
+            temp_file_path = temp_file.name + '.pdf'
+
+        # Process the file
+        file_obj = handle_uploaded_file(temp_file_path)
+
+        # Clean up
+        os.remove(temp_file_path)
         return jsonify({'status': 'success', 'fileid': file_obj.id})
+    # if file:
+    #     file = file.read()
+    #     file_obj = handle_uploaded_file(file)
+        # return jsonify({'status': 'success', 'fileid': file_obj.id})
     else:
         return jsonify({'status': 'error', 'message': 'No file found'})
     
@@ -116,4 +129,4 @@ def clear_messages():
     return jsonify({'status': 'success', 'message': 'Messages cleared'})
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5005)
+    app.run(debug=True, port=5005, host='0.0.0.0')

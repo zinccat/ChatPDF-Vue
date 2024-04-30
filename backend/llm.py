@@ -4,7 +4,7 @@ import base64
 import re
 
 import openai
-from openai.types.beta.threads import MessageContentImageFile
+from openai.types.beta.threads import ImageFileContentBlock
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -20,17 +20,17 @@ def create_thread(content, file_id):
             "content": content,
         }
     ]
-    messages[0].update({"file_ids": [file_id]})
+    messages[0].update({"attachments": [
+        { "file_id": file_id, "tools": [{"type": "file_search"}] }
+      ]})
     thread = client.beta.threads.create(messages=messages)
     return thread
 
 
 def create_message(thread, content, file_id):
-    file_ids = []
-    if file_id is not None:
-        file_ids.append(file_id)
     client.beta.threads.messages.create(
-        thread_id=thread.id, role="user", content=content, file_ids=file_ids
+        thread_id=thread.id, role="user", content=content, 
+        attachments=[{ "file_id": file_id, "tools": [{"type": "file_search"}] }]
     )
 
 
@@ -53,7 +53,7 @@ def get_message_and_citations(messages):
     citations = []
     for message in messages:
         message_text = ""
-        if not isinstance(message, MessageContentImageFile):
+        if not isinstance(message, ImageFileContentBlock):
             message_text = message.content[0].text
             annotations = message_text.annotations
         else:
@@ -86,7 +86,7 @@ def get_message_value_list(messages):
     messages_value_list = []
     for message in messages:
         message_content = ""
-        if not isinstance(message, MessageContentImageFile):
+        if not isinstance(message, ImageFileContentBlock):
             message_content = message.content[0].text
             annotations = message_content.annotations
         else:
@@ -134,6 +134,10 @@ def get_message_list(thread, run):
     return get_message_value_list(messages)
 
 
-def handle_uploaded_file(uploaded_file):
-    file = client.files.create(file=uploaded_file, purpose="assistants")
+# def handle_uploaded_file(uploaded_file):
+#     file = client.files.create(file=uploaded_file, purpose="assistants")
+#     return file
+
+def handle_uploaded_file(uploaded_file_path):
+    file = client.files.create(file=open(uploaded_file_path, "rb"), purpose="assistants")
     return file
